@@ -1,24 +1,16 @@
-import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+"use client"
 
-export const dynamic = "force-dynamic"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 
-export default async function Home() {
-  const cookieStore = await cookies()
-  const userId = cookieStore.get("userId")
+export default function Home() {
+  const router = useRouter()
 
-  // Redirect based on auth status
-  const redirectUrl = userId ? "/chat" : "/login"
-  
-  return (
-    <>
-      {/* Trigger client-side redirect via script to work around build-time issues */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.location.href = "${redirectUrl}";`,
-        }}
-      />
-      <div>Redirecting...</div>
-    </>
-  )
+  useEffect(() => {
+    // Check if user has a cookie (stored in browser)
+    // For simplicity, redirect to /login - user will be redirected to /chat if authenticated
+    router.push("/login")
+  }, [router])
+
+  return <div>Redirecting...</div>
 }
