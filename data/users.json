@@ -1,0 +1,47 @@
+{
+  "111111": {
+    "username": "111111",
+    "password": "$2a$10$9XAaQf9Oe1sGuCIuz7LLbefYSu6cUqL7yMwwDJXxyoU./uHntiMSC",
+    "id": "user_1763404269881_0qmint3iy"
+  },
+  "222222": {
+    "username": "222222",
+    "password": "$2a$10$9otwEP/VLUdNGl5hDvDmeOCFlcM0B0IV4gFIEAeIt8psR6./TnzlC",
+    "id": "user_1763404763652_jinbljziw"
+  },
+  "333333": {
+    "username": "333333",
+    "password": "$2a$10$dRScpXfTly.o9TGMcq5v3eUqsSgf4PPF4ngL3.oSqJgfOlFIio9ua",
+    "id": "user_1763412661209_gkw7stb6u"
+  },
+  "444444": {
+    "username": "444444",
+    "password": "$2a$10$Pq9QRUggIeV0czev/uCvrO7UXWajtgPm4qcfP6mIJbvvZ6Vfqmdv6",
+    "id": "user_1763413658394_o23ebl8ui"
+  },
+  "777777": {
+    "username": "777777",
+    "password": "$2a$10$ZLGIA4yRTeEvjeHLUEA63.cYYtNaR2/MBVjOnY5.S/xyK8V6EqqX.",
+    "id": "user_1763418224803_6z3dusinp"
+  },
+  "888888": {
+    "username": "888888",
+    "password": "$2a$10$ExV3WvpV.HiUezJ/TJvqbOT9s0xk8jWdxtKl3lvwSiCe85L/g4IUK",
+    "id": "user_1763418239442_yg3x4lruz"
+  },
+  "testuser": {
+    "username": "testuser",
+    "password": "$2a$10$f/w/KYbrqKETP9oa53zrOu2i2ZbtI1oUUbZ4KKs4raxN0oFPEK2Ya",
+    "id": "user_1763404156629_bngh6t7pp"
+  },
+  "newuser": {
+    "username": "newuser",
+    "password": "$2a$10$G8ofqspaFWUIvzkQQWy1deQZyRA0k47RZ9cQBFWxburN0X4klNNIC",
+    "id": "user_1763413221766_r1wtxonqx"
+  },
+  "shota": {
+    "username": "shota",
+    "password": "$2a$10$T3ptPr.3JUQvXgCtm3hln.iwtNVR4pnBVZsktnvXVwsr0DkuG4IOq",
+    "id": "user_1763418772499_objgx2b75"
+  }
+}
