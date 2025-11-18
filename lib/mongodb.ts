@@ -1,4 +1,4 @@
-import { MongoClient, Db } from 'mongodb'
+import { MongoClient, Db, ServerApiVersion } from 'mongodb'
 
 let cachedClient: MongoClient | null = null
 let cachedDb: Db | null = null
@@ -14,7 +14,16 @@ export async function connectToDatabase() {
     throw new Error('Please define MONGODB_URI environment variable')
   }
 
-  const client = new MongoClient(uri)
+  const client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    },
+    maxPoolSize: 10,
+    retryWrites: true,
+    retryReads: true,
+  })
 
   await client.connect()
   const db = client.db()
