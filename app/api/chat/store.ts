@@ -1,68 +1,72 @@
-import { getDatabase } from '@/lib/mongodb'
-import { ObjectId } from 'mongodb'
+import { query } from '@/lib/db'
 
-type Message = { id: string; role: 'user' | 'assistant' | 'system'; content: string; timestamp: string }
-type Chat = { _id?: ObjectId; id: string; userId: string; title: string; messages: Message[]; createdAt: string }
+type Message = { id?: number; role: 'user' | 'assistant' | 'system'; content: string; timestamp: string }
+type Chat = { id: string; userId: string; title: string; messages: Message[]; createdAt: string }
 
 export async function loadChatsForUser(userId: string): Promise<Chat[] | null> {
-  const db = await getDatabase()
-  const chats = await db.collection('chats').find({ userId }).sort({ createdAt: -1 }).toArray()
-  return chats.length > 0 ? (chats as Chat[]) : null
+  const chats: any = await query('SELECT id, userId, title, createdAt FROM chats WHERE userId = ? ORDER BY createdAt DESC', [userId])
+  if (chats.length === 0) return null
+
+  const results: Chat[] = []
+  for (const c of chats) {
+    const messages: any = await query('SELECT role, content, timestamp FROM messages WHERE chatId = ? ORDER BY timestamp ASC', [c.id])
+    results.push({ id: c.id, userId: c.userId, title: c.title, messages: messages.map((m: any) => ({ role: m.role, content: m.content, timestamp: m.timestamp })), createdAt: c.createdAt })
+  }
+  return results
 }
 
 export async function saveChatsForUser(userId: string, chats: Chat[]) {
-  const db = await getDatabase()
   for (const chat of chats) {
-    await db.collection('chats').updateOne(
-      { id: chat.id, userId },
-      { $set: chat },
-      { upsert: true }
-    )
+    await query('INSERT INTO chats (id, userId, title, createdAt) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE title = VALUES(title), createdAt = VALUES(createdAt)', [chat.id, userId, chat.title, chat.createdAt])
+    // replace messages
+    await query('DELETE FROM messages WHERE chatId = ?', [chat.id])
+    for (const m of chat.messages) {
+      await query('INSERT INTO messages (chatId, role, content, timestamp) VALUES (?, ?, ?, ?)', [chat.id, m.role, m.content, m.timestamp])
+    }
   }
 }
 
 export async function upsertChatForUser(userId: string, chat: Chat) {
-  const db = await getDatabase()
-  chat.userId = userId
-  await db.collection('chats').updateOne(
-    { id: chat.id, userId },
-    { $set: chat },
-    { upsert: true }
-  )
-  const result = await db.collection('chats').findOne({ id: chat.id, userId })
-  return result ? [result as Chat] : []
+  await query('INSERT INTO chats (id, userId, title, createdAt) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE title = VALUES(title), createdAt = VALUES(createdAt)', [chat.id, userId, chat.title, chat.createdAt])
+  // replace messages for this chat
+  await query('DELETE FROM messages WHERE chatId = ?', [chat.id])
+  for (const m of chat.messages) {
+    await query('INSERT INTO messages (chatId, role, content, timestamp) VALUES (?, ?, ?, ?)', [chat.id, m.role, m.content, m.timestamp])
+  }
+  const rows: any = await query('SELECT id, userId, title, createdAt FROM chats WHERE id = ? AND userId = ? LIMIT 1', [chat.id, userId])
+  if (rows.length === 0) return []
+  const messages: any = await query('SELECT role, content, timestamp FROM messages WHERE chatId = ? ORDER BY timestamp ASC', [chat.id])
+  return [{ id: rows[0].id, userId: rows[0].userId, title: rows[0].title, messages: messages.map((m: any) => ({ role: m.role, content: m.content, timestamp: m.timestamp })), createdAt: rows[0].createdAt }]
 }
 
 export async function deleteChatForUser(userId: string, chatId: string) {
-  const db = await getDatabase()
-  await db.collection('chats').deleteOne({ id: chatId, userId })
-  const remaining = await db.collection('chats').find({ userId }).sort({ createdAt: -1 }).toArray()
-  return remaining as Chat[]
+  await query('DELETE FROM messages WHERE chatId = ?', [chatId])
+  await query('DELETE FROM chats WHERE id = ? AND userId = ?', [chatId, userId])
+  const remaining: any = await query('SELECT id, userId, title, createdAt FROM chats WHERE userId = ? ORDER BY createdAt DESC', [userId])
+  const results: Chat[] = []
+  for (const c of remaining) {
+    const messages: any = await query('SELECT role, content, timestamp FROM messages WHERE chatId = ? ORDER BY timestamp ASC', [c.id])
+    results.push({ id: c.id, userId: c.userId, title: c.title, messages: messages.map((m: any) => ({ role: m.role, content: m.content, timestamp: m.timestamp })), createdAt: c.createdAt })
+  }
+  return results
 }
 
 export async function appendMessagesToChat(userId: string, chatId: string | null, messages: Message[]) {
-  const db = await getDatabase()
-
   if (!chatId) {
-    // Create new chat
     chatId = `chat-${Date.now()}`
-    const newChat: Chat = {
-      id: chatId,
-      userId,
-      title: 'New Conversation',
-      messages,
-      createdAt: new Date().toISOString(),
+    const createdAt = new Date().toISOString()
+    await query('INSERT INTO chats (id, userId, title, createdAt) VALUES (?, ?, ?, ?)', [chatId, userId, 'New Conversation', createdAt])
+    for (const m of messages) {
+      await query('INSERT INTO messages (chatId, role, content, timestamp) VALUES (?, ?, ?, ?)', [chatId, m.role, m.content, m.timestamp])
     }
-    await db.collection('chats').insertOne(newChat)
   } else {
-    // Append to existing chat
-    await db.collection('chats').updateOne(
-      { id: chatId, userId },
-      { $push: { messages: { $each: messages } } },
-      { upsert: true }
-    )
+    for (const m of messages) {
+      await query('INSERT INTO messages (chatId, role, content, timestamp) VALUES (?, ?, ?, ?)', [chatId, m.role, m.content, m.timestamp])
+    }
   }
 
-  const result = await db.collection('chats').findOne({ id: chatId, userId })
-  return result ? [result as Chat] : []
+  const rows: any = await query('SELECT id, userId, title, createdAt FROM chats WHERE id = ? AND userId = ? LIMIT 1', [chatId, userId])
+  if (rows.length === 0) return []
+  const msgs: any = await query('SELECT role, content, timestamp FROM messages WHERE chatId = ? ORDER BY timestamp ASC', [chatId])
+  return [{ id: rows[0].id, userId: rows[0].userId, title: rows[0].title, messages: msgs.map((m: any) => ({ role: m.role, content: m.content, timestamp: m.timestamp })), createdAt: rows[0].createdAt }]
 }

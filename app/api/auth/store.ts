@@ -1,40 +1,33 @@
-import { getDatabase } from '@/lib/mongodb'
+import { query } from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import { ObjectId } from 'mongodb'
 
-type User = { _id?: ObjectId; username: string; password: string; id: string }
+type User = { username: string; password: string; id: string }
 
 function normalizeUsername(username: string) {
   return username.trim().toLowerCase()
 }
 
 export async function getUser(username: string): Promise<User | undefined> {
-  const db = await getDatabase()
   const key = normalizeUsername(username)
-  const user = await db.collection('users').findOne({ username: key })
-  return user ? user : undefined
+  const rows: any = await query('SELECT * FROM users WHERE username = ? LIMIT 1', [key])
+  return rows.length > 0 ? rows[0] : undefined
 }
 
 export async function hasUser(username: string): Promise<boolean> {
-  const db = await getDatabase()
   const key = normalizeUsername(username)
-  const user = await db.collection('users').findOne({ username: key })
-  return !!user
+  const rows: any = await query('SELECT 1 FROM users WHERE username = ? LIMIT 1', [key])
+  return rows.length > 0
 }
 
 export async function createUser(username: string, password: string): Promise<User> {
-  const db = await getDatabase()
   const key = normalizeUsername(username)
-  const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const userId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
   const hashed = bcrypt.hashSync(password, 10)
-  const user: User = { username: key, password: hashed, id: userId }
-  
-  await db.collection('users').insertOne(user)
-  return user
+  await query('INSERT INTO users (id, username, password) VALUES (?, ?, ?)', [userId, key, hashed])
+  return { username: key, password: hashed, id: userId }
 }
 
 export async function listUsers(): Promise<Array<{ id: string; username: string }>> {
-  const db = await getDatabase()
-  const users = await db.collection('users').find({}).toArray()
-  return users.map((u: any) => ({ id: u.id, username: u.username }))
+  const rows: any = await query('SELECT id, username FROM users')
+  return rows.map((r: any) => ({ id: r.id, username: r.username }))
 }

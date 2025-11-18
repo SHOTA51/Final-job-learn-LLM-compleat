@@ -1,76 +1,15 @@
-import { MongoClient, Db } from 'mongodb'
-
-let cachedClient: MongoClient | null = null
-let cachedDb: Db | null = null
-let connectionPromise: Promise<{ client: MongoClient; db: Db }> | null = null
-
-export async function connectToDatabase() {
-  if (cachedClient && cachedDb) {
-    try {
-      // Verify client is still connected
-      await cachedDb.admin().ping()
-      return { client: cachedClient, db: cachedDb }
-    } catch (e) {
-      // Connection dead, reset
-      cachedClient = null
-      cachedDb = null
-      connectionPromise = null
-    }
-  }
-
-  // Prevent multiple concurrent connections
-  if (connectionPromise) {
-    return connectionPromise
-  }
-
-  connectionPromise = (async () => {
-    const uri = process.env.MONGODB_URI
-
-    if (!uri) {
-      throw new Error('Please define MONGODB_URI environment variable')
-    }
-
-    const client = new MongoClient(uri, {
-      maxPoolSize: 1,
-      minPoolSize: 0,
-      maxIdleTimeMS: 5000,
-      serverSelectionTimeoutMS: 3000,
-      socketTimeoutMS: 20000,
-      connectTimeoutMS: 10000,
-      tls: false,
-      retryWrites: false,
-      heartbeatFrequencyMS: 30000,
-    })
-
-    try {
-      await client.connect()
-      const db = client.db()
-
-      cachedClient = client
-      cachedDb = db
-      console.log('[mongodb] Connected successfully')
-
-      return { client, db }
-    } catch (error) {
-      console.error('[mongodb] Connection error:', error)
-      connectionPromise = null
-      throw error
-    }
-  })()
-
-  return connectionPromise
-}
+// MongoDB helper removed. Project migrated to MariaDB/MySQL.
+// This module intentionally throws if used so any remaining MongoDB
+// calls surface quickly. Use `lib/db.ts` and the `query()` helper instead.
 
 export async function getDatabase() {
-  const { db } = await connectToDatabase()
-  return db
+  throw new Error('MongoDB removed: use DATABASE_URL and lib/db (mysql). Update imports to use `query` from `@/lib/db`.')
+}
+
+export async function connectToDatabase() {
+  return getDatabase()
 }
 
 export async function closeDatabase() {
-  if (cachedClient) {
-    await cachedClient.close()
-    cachedClient = null
-    cachedDb = null
-    connectionPromise = null
-  }
+  return
 }
