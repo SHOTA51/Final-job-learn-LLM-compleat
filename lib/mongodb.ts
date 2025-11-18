@@ -1,4 +1,4 @@
-import { MongoClient, Db, ServerApiVersion } from 'mongodb'
+import { MongoClient, Db } from 'mongodb'
 
 let cachedClient: MongoClient | null = null
 let cachedDb: Db | null = null
@@ -15,23 +15,27 @@ export async function connectToDatabase() {
   }
 
   const client = new MongoClient(uri, {
-    serverApi: {
-      version: ServerApiVersion.v1,
-      strict: true,
-      deprecationErrors: true,
-    },
     maxPoolSize: 10,
-    retryWrites: true,
-    retryReads: true,
+    minPoolSize: 1,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
   })
 
-  await client.connect()
-  const db = client.db()
+  try {
+    await client.connect()
+    const db = client.db()
+    
+    // Verify connection
+    await db.admin().ping()
+    
+    cachedClient = client
+    cachedDb = db
 
-  cachedClient = client
-  cachedDb = db
-
-  return { client, db }
+    return { client, db }
+  } catch (error) {
+    console.error('[mongodb] Connection error:', error)
+    throw error
+  }
 }
 
 export async function getDatabase() {
