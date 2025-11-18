@@ -19,8 +19,7 @@ export async function connectToDatabase() {
     minPoolSize: 1,
     serverSelectionTimeoutMS: 10000,
     socketTimeoutMS: 45000,
-    ssl: true,
-    retryWrites: true,
+    tls: false,
   })
 
   try {
