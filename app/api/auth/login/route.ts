@@ -36,6 +36,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, userId: user.id })
   } catch (error) {
-    return NextResponse.json({ error: "An error occurred during login" }, { status: 500 })
+    console.error("[login] Error:", error)
+    return NextResponse.json({ error: "An error occurred during login", details: String(error) }, { status: 500 })
   }
 }
