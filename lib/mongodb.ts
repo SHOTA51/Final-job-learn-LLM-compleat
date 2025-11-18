@@ -2,44 +2,63 @@ import { MongoClient, Db } from 'mongodb'
 
 let cachedClient: MongoClient | null = null
 let cachedDb: Db | null = null
+let connectionPromise: Promise<{ client: MongoClient; db: Db }> | null = null
 
 export async function connectToDatabase() {
   if (cachedClient && cachedDb) {
-    return { client: cachedClient, db: cachedDb }
+    try {
+      // Verify client is still connected
+      await cachedDb.admin().ping()
+      return { client: cachedClient, db: cachedDb }
+    } catch (e) {
+      // Connection dead, reset
+      cachedClient = null
+      cachedDb = null
+      connectionPromise = null
+    }
   }
 
-  const uri = process.env.MONGODB_URI
-
-  if (!uri) {
-    throw new Error('Please define MONGODB_URI environment variable')
+  // Prevent multiple concurrent connections
+  if (connectionPromise) {
+    return connectionPromise
   }
 
-  const client = new MongoClient(uri, {
-    maxPoolSize: 1,
-    minPoolSize: 0,
-    maxIdleTimeMS: 10000,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 30000,
-    connectTimeoutMS: 10000,
-    tls: false,
-    monitorCommands: false,
-    retryWrites: false,
-  })
+  connectionPromise = (async () => {
+    const uri = process.env.MONGODB_URI
 
-  try {
-    await client.connect()
-    const db = client.db()
-    
-    console.log('[mongodb] Connected successfully')
-    
-    cachedClient = client
-    cachedDb = db
+    if (!uri) {
+      throw new Error('Please define MONGODB_URI environment variable')
+    }
 
-    return { client, db }
-  } catch (error) {
-    console.error('[mongodb] Connection error:', error)
-    throw error
-  }
+    const client = new MongoClient(uri, {
+      maxPoolSize: 1,
+      minPoolSize: 0,
+      maxIdleTimeMS: 5000,
+      serverSelectionTimeoutMS: 3000,
+      socketTimeoutMS: 20000,
+      connectTimeoutMS: 10000,
+      tls: false,
+      retryWrites: false,
+      heartbeatFrequencyMS: 30000,
+    })
+
+    try {
+      await client.connect()
+      const db = client.db()
+
+      cachedClient = client
+      cachedDb = db
+      console.log('[mongodb] Connected successfully')
+
+      return { client, db }
+    } catch (error) {
+      console.error('[mongodb] Connection error:', error)
+      connectionPromise = null
+      throw error
+    }
+  })()
+
+  return connectionPromise
 }
 
 export async function getDatabase() {
@@ -52,5 +71,6 @@ export async function closeDatabase() {
     await cachedClient.close()
     cachedClient = null
     cachedDb = null
+    connectionPromise = null
   }
 }
