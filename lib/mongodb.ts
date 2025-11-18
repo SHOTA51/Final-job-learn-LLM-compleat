@@ -17,8 +17,10 @@ export async function connectToDatabase() {
   const client = new MongoClient(uri, {
     maxPoolSize: 10,
     minPoolSize: 1,
-    serverSelectionTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 10000,
     socketTimeoutMS: 45000,
+    ssl: true,
+    retryWrites: true,
   })
 
   try {
@@ -27,6 +29,7 @@ export async function connectToDatabase() {
     
     // Verify connection
     await db.admin().ping()
+    console.log('[mongodb] Connected successfully')
     
     cachedClient = client
     cachedDb = db
